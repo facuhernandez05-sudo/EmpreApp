@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Img, interpolate, random, staticFile, useCurrentFrame, Easing } from "remotion";
 import { C, fonts, s2f, SILVER_GRADIENT } from "./theme";
-import { Confetti, Glass, Glitch, Kicker, LightRays, Pill, Shield, Title3D, clamp, useSpring } from "./components";
+import { Confetti, Glass, Glitch, Kicker, LightRays, Logo, Moto3D, Pill, Title3D, clamp, useSpring } from "./components";
 
 // Tiempos absolutos (s) de cada escena: derivados de la locución
 export const SCENES = {
@@ -19,31 +19,34 @@ export const SCENES = {
 // Convierte un tiempo absoluto de la voz a frame local de la escena
 const at = (abs: number, scene: keyof typeof SCENES) => s2f(abs - SCENES[scene][0]);
 
+// Zonas de layout (sin superposiciones): logo 220–320 · contenido 340–1170 · subtítulos 1250–1420
 const Center: React.FC<{ y: number; children: React.ReactNode; style?: React.CSSProperties }> = ({ y, children, style }) => (
   <div style={{ position: "absolute", left: 0, right: 0, top: y, display: "flex", justifyContent: "center", ...style }}>{children}</div>
 );
 
-/* 1 · HOOK ------------------------------------------------------------- */
+/* 1 · HOOK: la moto entra en capas 3D + "¡GRAN SORTEO!" ------------------ */
 export const SceneHook: React.FC = () => {
   const frame = useCurrentFrame();
-  const push = interpolate(frame, [0, 37], [1, 1.06]);
+  const flash = interpolate(frame, [0, 3], [0.9, 0], clamp);
+  const pill = useSpring(14, { damping: 12 });
   return (
     <AbsoluteFill>
-      <LightRays y={720} opacity={interpolate(frame, [0, 8], [0, 1], clamp)} />
-      <Confetti start={2} count={70} originY={700} seed="hook" />
-      <Glitch at={0} dur={5}>
-        <AbsoluteFill style={{ transform: `scale(${push})` }}>
-          <Center y={470}>
-            <Title3D text="¡GRAN" size={215} delay={0} depth={18} />
+      <LightRays y={860} opacity={interpolate(frame, [0, 8], [0, 1], clamp)} />
+      <Glitch at={0} dur={4}>
+        <AbsoluteFill>
+          <Center y={330}>
+            <Title3D text="¡GRAN SORTEO!" size={112} delay={0} depth={16} />
           </Center>
-          <Center y={710}>
-            <Title3D text="SORTEO!" size={222} delay={5} depth={18} />
+          <Center y={500}>
+            <Moto3D width={740} delay={0} orbit={[-26, 8]} orbitFrames={60} fromX={900} />
           </Center>
-          <Center y={1000}>
-            <Kicker text="Solidario · C.A.E.C." delay={12} style={{ fontSize: 38 }} />
+          <Center y={1205} style={{ opacity: pill, transform: `translateY(${(1 - pill) * 30}px) scale(${0.85 + pill * 0.15})` }}>
+            <Pill size={42}>1° premio · Moto 110cc</Pill>
           </Center>
         </AbsoluteFill>
       </Glitch>
+      <Confetti start={3} count={60} originY={900} seed="hook" />
+      <AbsoluteFill style={{ background: "#FFF6D0", opacity: flash }} />
     </AbsoluteFill>
   );
 };
@@ -52,182 +55,266 @@ export const SceneHook: React.FC = () => {
 export const SceneDream: React.FC = () => {
   const frame = useCurrentFrame();
   const kidsIn = at(2.75, "dream");
-  const shieldIn = at(4.95, "dream");
-  const lift = useSpring(kidsIn - 4, { damping: 16 });
+  const logoIn = at(4.95, "dream");
   const card = useSpring(kidsIn, { damping: 15, mass: 0.9 });
-  const zoom = interpolate(frame, [kidsIn, 150], [1.08, 1.0], clamp);
   const label = useSpring(at(3.65, "dream"));
-  const sh = useSpring(shieldIn, { damping: 10, mass: 0.7 });
-  const titleY = interpolate(lift, [0, 1], [520, 300]);
-  const titleScale = interpolate(lift, [0, 1], [1, 0.62]);
+  const swap = interpolate(frame, [logoIn - 4, logoIn + 6], [0, 1], { ...clamp, easing: Easing.inOut(Easing.cubic) });
+  const lg = useSpring(logoIn, { damping: 11, mass: 0.7 });
+  const zoom = interpolate(frame, [kidsIn, 150], [1.06, 1.0], clamp);
+  // antes de la foto: títulos centrados; luego suben a la franja superior
+  const lift = useSpring(kidsIn - 4, { damping: 16 });
+  const titleY = interpolate(lift, [0, 1], [560, 340]);
   return (
     <AbsoluteFill>
-      <div style={{ position: "absolute", left: 0, right: 0, top: titleY, transform: `scale(${titleScale})`, transformOrigin: "50% 0%" }}>
+      {/* bloque título → se reemplaza por el escudo al nombrar el club */}
+      <div style={{ position: "absolute", left: 0, right: 0, top: titleY, height: 240, opacity: 1 - swap, transform: `scale(${1 - swap * 0.2})` }}>
         <Center y={0}>
-          <Title3D text="Sorteo" size={190} serif delay={0} depth={10} tilt={false} />
+          <Title3D text="Sorteo" size={124} serif delay={0} depth={4} tilt={false} />
         </Center>
-        <Center y={175}>
-          <Title3D text="SOLIDARIO" size={168} delay={3} depth={16} />
+        <Center y={112}>
+          <Title3D text="SOLIDARIO" size={120} delay={3} depth={14} />
         </Center>
-        <Center y={370} style={{ opacity: 1 - lift }}>
-          <Kicker text="¡Ayudando a ayudar!" delay={14} />
+        <Center y={262} style={{ opacity: 1 - lift }}>
+          <Kicker text="¡Ayudando a ayudar!" delay={12} />
         </Center>
       </div>
-      {/* tarjeta con la foto de los chicos y la jirafa */}
+      <Center y={300} style={{ opacity: swap }}>
+        <div style={{ perspective: 1200 }}>
+          <div style={{ transform: `rotateY(${(1 - lg) * 180}deg) scale(${0.6 + lg * 0.4})` }}>
+            <Logo width={196} glow={0.6} />
+          </div>
+        </div>
+      </Center>
+      {/* foto de los chicos con la jirafa */}
       <div
         style={{
           position: "absolute",
           left: 90,
-          top: 580,
+          top: 600,
           width: 900,
           height: 475,
           opacity: card,
-          transform: `perspective(1600px) translateY(${(1 - card) * 160}px) rotateX(${(1 - card) * 25}deg) rotateY(${Math.sin(frame / 40) * 3}deg)`,
+          transform: `perspective(1600px) translateY(${(1 - card) * 160}px) rotateX(${(1 - card) * 25}deg) rotateY(${Math.sin(frame / 40) * 2.5}deg)`,
         }}
       >
         <Glass style={{ width: "100%", height: "100%" }} radius={46}>
           <Img
             src={staticFile("img/kids.png")}
-            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 100%", transform: `scale(${zoom})`, transformOrigin: "50% 100%", filter: "contrast(1.06) saturate(1.12) brightness(0.98)" }}
+            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 100%", transform: `scale(${zoom})`, transformOrigin: "50% 100%", filter: "contrast(1.06) saturate(1.12)" }}
           />
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0) 75%, rgba(0,0,0,0.35) 100%)", zIndex: 2 }} />
         </Glass>
-        <div
-          style={{
-            position: "absolute",
-            left: 34,
-            bottom: -44,
-            opacity: label,
-            transform: `translateY(${(1 - label) * 30}px) scale(${0.85 + label * 0.15})`,
-            transformOrigin: "0% 50%",
-          }}
-        >
-          <Pill size={34}>
-            <BallIcon /> Juntos por nuestra cancha
-          </Pill>
-        </div>
-        <div
-          style={{
-            position: "absolute",
-            right: -20,
-            top: -110,
-            transform: `scale(${sh}) rotate(${(1 - sh) * -25}deg)`,
-          }}
-        >
-          <Ring at={shieldIn} />
-          <Shield size={170} glow={0.7} />
-        </div>
       </div>
+      <Center y={1100} style={{ opacity: label, transform: `translateY(${(1 - label) * 30}px)` }}>
+        <Pill size={34}>
+          <BallIcon /> Juntos por nuestra cancha
+        </Pill>
+      </Center>
     </AbsoluteFill>
   );
 };
 
-const Ring: React.FC<{ at: number }> = ({ at: a }) => {
-  const frame = useCurrentFrame();
-  const f = frame - a;
-  const r = interpolate(f, [0, 18], [60, 260], clamp);
-  const o = interpolate(f, [0, 18], [0.9, 0], clamp);
-  if (f < 0) return null;
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: 85 - r / 2,
-        top: 102 - r / 2,
-        width: r,
-        height: r,
-        borderRadius: r,
-        border: "4px solid #FFD21F",
-        opacity: o,
-        boxShadow: "0 0 30px rgba(255,210,31,0.8)",
-      }}
-    />
-  );
-};
-
-const BallIcon: React.FC<{ size?: number }> = ({ size = 38 }) => (
-  <svg width={size} height={size} viewBox="0 0 40 40">
-    <circle cx="20" cy="20" r="18" fill="#E8741C" stroke="#111" strokeWidth="2.5" />
-    <path d="M2 20 H38 M20 2 V38 M7 7 Q20 20 7 33 M33 7 Q20 20 33 33" stroke="#111" strokeWidth="2.5" fill="none" />
-  </svg>
-);
-
-/* 3 · PREMIOS: moto 110cc (1°) y TV Smart 32" (2°) ---------------------- */
+/* 3 · PREMIOS: moto 110cc (1°) → TV Smart 32" (2°), en 3D --------------- */
 export const ScenePrizes: React.FC = () => {
   const frame = useCurrentFrame();
-  const motoIn = useSpring(0, { damping: 15 });
   const title = at(7.15, "prizes");
   const badge1 = useSpring(at(7.88, "prizes"), { damping: 9, mass: 0.6 });
   const tvT = at(8.8, "prizes");
-  const split = interpolate(frame, [tvT - 3, tvT + 10], [0, 1], { ...clamp, easing: Easing.inOut(Easing.cubic) });
-  const tvIn = useSpring(tvT + 2, { damping: 14 });
-  const badge2 = useSpring(at(9.5, "prizes"), { damping: 9, mass: 0.6 });
-  // moto: de hero centrado a columna izquierda
-  const mW = interpolate(split, [0, 1], [760, 450]);
-  const mX = interpolate(split, [0, 1], [160, 70]);
-  const mY = interpolate(split, [0, 1], [300, 540]);
-  const mH = mW * 0.9;
+  const sw = interpolate(frame, [tvT - 4, tvT + 8], [0, 1], { ...clamp, easing: Easing.inOut(Easing.cubic) });
+  const tvIn = useSpring(tvT, { damping: 14 });
+  const badge2 = useSpring(at(9.45, "prizes"), { damping: 9, mass: 0.6 });
   return (
     <AbsoluteFill>
-      <LightRays y={650} opacity={0.6} />
+      <LightRays y={780} opacity={0.6} />
+      {/* PRIMER PREMIO */}
+      <AbsoluteFill style={{ opacity: 1 - sw, transform: `perspective(1600px) translateX(${-sw * 500}px) rotateY(${sw * 40}deg)` }}>
+        <Center y={340} style={{ transform: `scale(${badge1})` }}>
+          <Pill size={44}>1° premio</Pill>
+        </Center>
+        <Center y={445}>
+          <Moto3D width={640} delay={0} orbit={[24, -10]} orbitFrames={90} fromX={-800} />
+        </Center>
+        <Center y={1035} style={{ opacity: frame >= title ? 1 : 0 }}>
+          <Title3D text="MOTO 110cc" size={140} delay={title} depth={16} />
+        </Center>
+      </AbsoluteFill>
+      {/* SEGUNDO PREMIO */}
+      {frame >= tvT - 4 ? (
+        <AbsoluteFill style={{ opacity: tvIn, transform: `perspective(1600px) translateX(${(1 - tvIn) * 500}px) rotateY(${(1 - tvIn) * -40}deg)` }}>
+          <Center y={340} style={{ transform: `scale(${badge2})` }}>
+            <Pill size={44} dark>
+              2° premio
+            </Pill>
+          </Center>
+          <Center y={520}>
+            <div style={{ transform: `perspective(1400px) rotateY(${Math.sin(frame / 25) * 8 - 6}deg) rotateX(6deg) scale(1.75)`, transformOrigin: "50% 0%" }}>
+              <TV on={tvT + 3} />
+            </div>
+          </Center>
+          <Center y={1040}>
+            <Title3D text="TV SMART 32”" size={118} delay={tvT + 6} depth={14} gradient={SILVER_GRADIENT} extrudeColor="#5A5A5A" />
+          </Center>
+        </AbsoluteFill>
+      ) : null}
+    </AbsoluteFill>
+  );
+};
+
+/* 4 · LLEVÁ LA MOTO… CON UNA SORPRESA ----------------------------------- */
+export const SceneSurprise: React.FC = () => {
+  const sur = at(12.28, "surprise");
+  const gift = useSpring(sur, { damping: 8, mass: 0.6 });
+  return (
+    <AbsoluteFill>
+      <LightRays y={760} opacity={0.8} />
+      <Center y={340}>
+        <Title3D text="un regalo inolvidable" size={92} serif delay={2} depth={4} tilt={false} />
+      </Center>
+      <Center y={455}>
+        <Moto3D width={620} delay={0} orbit={[-30, 18]} orbitFrames={75} fromX={0} />
+      </Center>
+      <Center y={1035} style={{ transform: `scale(${gift}) rotate(${(1 - gift) * 30}deg)` }}>
+        <GiftIcon size={120} />
+      </Center>
+      <Confetti start={sur} count={50} originY={1080} seed="sur" />
+    </AbsoluteFill>
+  );
+};
+
+/* 6b · EFECTIVO → TEMPORADA DE VERANO GRATIS PARA 2 ------------------- */
+export const SceneCash: React.FC = () => {
+  const frame = useCurrentFrame();
+  const top = useSpring(0, { damping: 15 });
+  const ef = at(17.54, "cash");
+  const temp = at(19.0, "cash");
+  const grat = at(19.75, "cash");
+  const two = at(20.32, "cash");
+  const shrink = useSpring(temp - 6, { damping: 16 });
+  const card = useSpring(temp, { damping: 14 });
+  const twoP = useSpring(two, { damping: 10 });
+  return (
+    <AbsoluteFill>
+      <div style={{ position: "absolute", left: 0, right: 0, top: interpolate(shrink, [0, 1], [520, 340]), transform: `scale(${interpolate(shrink, [0, 1], [1, 0.72])})`, transformOrigin: "50% 0%" }}>
+        <Center y={0} style={{ opacity: top, transform: `translateY(${(1 - top) * 30}px)` }}>
+          <Kicker text="Pagando en" delay={0} style={{ fontSize: 44 }} />
+        </Center>
+        <Center y={80}>
+          <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
+            <CoinIcon size={140} at={ef} />
+            <Title3D text="EFECTIVO" size={150} delay={ef - 2} depth={16} />
+          </div>
+        </Center>
+      </div>
       <div
         style={{
           position: "absolute",
-          left: mX,
-          top: mY,
-          width: mW,
-          height: mH,
-          opacity: motoIn,
-          transform: `perspective(1600px) translateX(${(1 - motoIn) * -300}px) rotateY(${(1 - motoIn) * 30 + Math.sin(frame / 35) * 3}deg)`,
+          left: 90,
+          top: 590,
+          width: 900,
+          height: 580,
+          opacity: card,
+          transform: `perspective(1600px) translateY(${(1 - card) * 160}px) rotateX(${(1 - card) * 22}deg)`,
         }}
       >
-        <Glass style={{ width: "100%", height: "100%" }} radius={interpolate(split, [0, 1], [46, 34])}>
-          <div style={{ position: "absolute", inset: 0, background: "#fff" }} />
-          <Img
-            src={staticFile("img/moto.png")}
-            style={{ position: "relative", width: "100%", height: "100%", objectFit: "contain", transform: `scale(${interpolate(frame, [0, 130], [1.0, 1.07])})` }}
-          />
+        <Glass style={{ width: "100%", height: "100%" }} radius={50} padding={48}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontFamily: fonts.body, fontWeight: 800, fontSize: 32, letterSpacing: "0.2em", color: C.muted }}>ENTRÁS AL SORTEO POR</div>
+              <div style={{ fontFamily: fonts.title, fontWeight: 900, fontSize: 80, color: "#fff", lineHeight: 1, marginTop: 18 }}>
+                Temporada
+                <br />
+                de verano
+              </div>
+            </div>
+            <SunIcon size={150} />
+          </div>
+          <div style={{ marginTop: 18, display: "flex", opacity: frame >= grat ? 1 : 0 }}>
+            <Title3D text="GRATIS" size={140} delay={grat} depth={16} tilt={false} />
+          </div>
+          <div style={{ marginTop: 26, transform: `scale(${twoP})`, transformOrigin: "0% 50%" }}>
+            <Pill size={34}>
+              <PeopleIcon /> para 2 personas
+            </Pill>
+          </div>
         </Glass>
-        <div
-          style={{
-            position: "absolute",
-            left: -18,
-            top: -36,
-            transform: `scale(${badge1 * interpolate(split, [0, 1], [1, 0.8])}) rotate(-8deg)`,
-            transformOrigin: "0% 0%",
-          }}
-        >
-          <Pill size={40}>1° premio</Pill>
-        </div>
-      </div>
-      {/* Título moto */}
-      <div style={{ position: "absolute", left: 0, right: 0, top: interpolate(split, [0, 1], [1010, 980]), opacity: frame >= title ? 1 : 0 }}>
-        <div style={{ position: "absolute", left: interpolate(split, [0, 1], [0, 70]), width: interpolate(split, [0, 1], [1080, 450]), display: "flex", justifyContent: "center" }}>
-          <Title3D text="MOTO 110cc" size={interpolate(split, [0, 1], [150, 78])} delay={title} depth={16} />
-        </div>
-      </div>
-      {/* TV Smart */}
-      <div
-        style={{
-          position: "absolute",
-          left: 560,
-          top: 620,
-          width: 450,
-          opacity: tvIn,
-          transform: `perspective(1600px) translateX(${(1 - tvIn) * 300}px) rotateY(${(1 - tvIn) * -30 + Math.sin(frame / 35 + 1) * -3}deg)`,
-        }}
-      >
-        <TV on={tvT + 4} />
-        <div style={{ position: "absolute", left: -10, top: -86, transform: `scale(${badge2 * 0.8}) rotate(-8deg)`, transformOrigin: "0% 0%" }}>
-          <Pill size={40} dark>
-            2° premio
-          </Pill>
-        </div>
-        <div style={{ marginTop: 44, display: "flex", justifyContent: "center", opacity: frame >= tvT + 6 ? 1 : 0 }}>
-          <Title3D text={"TV SMART 32”"} size={66} delay={tvT + 6} depth={14} gradient={SILVER_GRADIENT} extrudeColor="#5A5A5A" />
-        </div>
       </div>
     </AbsoluteFill>
+  );
+};
+
+/* 7 · ¿TE LO VAS A PERDER? ------------------------------------------- */
+export const SceneQuestion: React.FC = () => {
+  const frame = useCurrentFrame();
+  const push = interpolate(frame, [0, 39], [1, 1.08]);
+  return (
+    <AbsoluteFill>
+      <LightRays y={780} opacity={0.5} />
+      <Glitch at={2} dur={5}>
+        <AbsoluteFill style={{ transform: `scale(${push})` }}>
+          <Center y={560}>
+            <Title3D text="¿TE LO VAS" size={150} delay={0} depth={14} gradient={SILVER_GRADIENT} extrudeColor="#4A4A4A" />
+          </Center>
+          <Center y={740}>
+            <Title3D text="A PERDER?" size={176} delay={5} depth={16} />
+          </Center>
+        </AbsoluteFill>
+      </Glitch>
+    </AbsoluteFill>
+  );
+};
+
+/* 8 · CIERRE ---------------------------------------------------------- */
+export const SceneEnd: React.FC = () => {
+  const frame = useCurrentFrame();
+  const sh = useSpring(0, { damping: 11, mass: 0.8 });
+  const info = useSpring(14, { damping: 15 });
+  const cta = useSpring(22, { damping: 12 });
+  const pulse = 1 + 0.03 * Math.sin(frame / 4.5) * (frame > 30 ? 1 : 0);
+  return (
+    <AbsoluteFill>
+      <LightRays y={480} opacity={0.9} />
+      <Confetti start={1} count={60} originY={480} seed="end" />
+      <Center y={300}>
+        <div style={{ perspective: 1200 }}>
+          <div style={{ transform: `rotateY(${(1 - sh) * -120 + Math.sin(frame / 20) * 8}deg) scale(${0.5 + sh * 0.5})` }}>
+            <Logo width={250} glow={0.7} />
+          </div>
+        </div>
+      </Center>
+      <Center y={660}>
+        <Title3D text="GRAN SORTEO" size={120} delay={4} depth={14} />
+      </Center>
+      <Center y={790}>
+        <Title3D text="Solidario" size={104} serif delay={8} depth={4} tilt={false} />
+      </Center>
+      <Center y={935} style={{ opacity: info, transform: `translateY(${(1 - info) * 40}px)` }}>
+        <div style={{ display: "flex", gap: 20 }}>
+          <Pill dark size={30}>
+            <CalIcon /> Sorteo: diciembre
+          </Pill>
+          <Pill dark size={30}>
+            Lotería de Santa Fe
+          </Pill>
+        </div>
+      </Center>
+      <Center y={1040} style={{ opacity: cta, transform: `scale(${(0.8 + cta * 0.2) * pulse})` }}>
+        <Pill size={48}>Comprá tu bono</Pill>
+      </Center>
+      <Center y={1165} style={{ opacity: cta }}>
+        <div style={{ fontFamily: fonts.body, fontWeight: 600, fontSize: 27, color: C.muted, textAlign: "center" }}>
+          Secretaría · Subcomisión de Básquet · Comisión Directiva
+        </div>
+      </Center>
+    </AbsoluteFill>
+  );
+};
+
+/* Logo oficial discreto (zona segura superior izquierda) -------------- */
+export const CornerLogo: React.FC = () => {
+  const p = useSpring(0, { damping: 16 });
+  return (
+    <div style={{ position: "absolute", left: 64, top: 222, opacity: p * 0.95, transform: `translateX(${(1 - p) * -30}px)` }}>
+      <Logo width={74} glow={0.25} />
+    </div>
   );
 };
 
@@ -267,7 +354,7 @@ const TV: React.FC<{ on: number }> = ({ on }) => {
               }}
             >
               <div style={{ opacity: open, transform: `scale(${open})`, display: "flex", alignItems: "center", gap: 16 }}>
-                <Shield size={86} glow={0.5} />
+                <Logo width={74} glow={0.4} />
                 <div style={{ fontFamily: fonts.title, fontWeight: 900, fontSize: 40, color: "#fff", lineHeight: 1 }}>
                   SMART
                   <br />
@@ -288,51 +375,6 @@ const TV: React.FC<{ on: number }> = ({ on }) => {
 };
 
 /* 4 · LLEVÁ LA MOTO… CON UNA SORPRESA ----------------------------------- */
-export const SceneSurprise: React.FC = () => {
-  const frame = useCurrentFrame();
-  const p = useSpring(0, { damping: 16 });
-  const sur = at(12.28, "surprise");
-  const gift = useSpring(sur, { damping: 8, mass: 0.6 });
-  const sweep = interpolate(frame, [6, 30], [-40, 140], clamp);
-  return (
-    <AbsoluteFill>
-      <LightRays y={720} opacity={0.8} />
-      <Center y={300}>
-        <Title3D text="un regalo inolvidable" size={92} serif delay={4} depth={6} tilt={false} />
-      </Center>
-      <div
-        style={{
-          position: "absolute",
-          left: 140,
-          top: 420,
-          width: 800,
-          height: 718,
-          transform: `perspective(1800px) scale(${interpolate(p, [0, 1], [0.8, 1]) * interpolate(frame, [0, 75], [1, 1.04])}) rotateX(${(1 - p) * 20}deg) rotateY(${Math.sin(frame / 30) * 2}deg)`,
-          opacity: p,
-        }}
-      >
-        <Glass style={{ width: "100%", height: "100%" }} radius={50}>
-          <div style={{ position: "absolute", inset: 0, background: "#fff" }} />
-          <Img src={staticFile("img/moto.png")} style={{ position: "relative", width: "100%", height: "100%", objectFit: "contain" }} />
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              zIndex: 2,
-              background: `linear-gradient(105deg, rgba(255,255,255,0) ${sweep - 15}%, rgba(255,240,180,0.55) ${sweep}%, rgba(255,255,255,0) ${sweep + 15}%)`,
-              mixBlendMode: "screen",
-            }}
-          />
-        </Glass>
-        <div style={{ position: "absolute", right: -30, bottom: -60, transform: `scale(${gift}) rotate(${(1 - gift) * 40 - 8}deg)` }}>
-          <GiftIcon size={190} />
-        </div>
-      </div>
-      <Confetti start={sur} count={50} originY={1050} seed="sur" />
-    </AbsoluteFill>
-  );
-};
-
 const GiftIcon: React.FC<{ size: number }> = ({ size }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" style={{ filter: "drop-shadow(0 14px 24px rgba(0,0,0,0.6)) drop-shadow(0 0 20px rgba(255,200,0,0.6))" }}>
     <defs>
@@ -354,6 +396,68 @@ const GiftIcon: React.FC<{ size: number }> = ({ size }) => (
 );
 
 /* 5 · BONO: 3 cuotas de $15.000 --------------------------------------- */
+const CoinIcon: React.FC<{ size: number; at: number }> = ({ size, at: a }) => {
+  const frame = useCurrentFrame();
+  const p = useSpring(a, { damping: 9, mass: 0.6 });
+  const spin = Math.cos((frame - a) / 6);
+  return (
+    <div style={{ width: size, height: size, transform: `scale(${p}) scaleX(${frame >= a ? 0.35 + 0.65 * Math.abs(spin) : 1})` }}>
+      <svg width={size} height={size} viewBox="0 0 100 100" style={{ filter: "drop-shadow(0 10px 20px rgba(0,0,0,0.6)) drop-shadow(0 0 22px rgba(255,200,0,0.6))" }}>
+        <defs>
+          <radialGradient id="cg" cx="35%" cy="30%" r="80%">
+            <stop offset="0" stopColor="#FFF6C8" />
+            <stop offset="0.45" stopColor="#FFD21F" />
+            <stop offset="1" stopColor="#A87400" />
+          </radialGradient>
+        </defs>
+        <circle cx="50" cy="50" r="46" fill="url(#cg)" />
+        <circle cx="50" cy="50" r="37" fill="none" stroke="#9A6A00" strokeWidth="3" />
+        <text x="50" y="66" textAnchor="middle" fontFamily={fonts.title} fontWeight={900} fontSize="46" fill="#7A5200">
+          $
+        </text>
+      </svg>
+    </div>
+  );
+};
+
+const SunIcon: React.FC<{ size: number }> = ({ size }) => {
+  const frame = useCurrentFrame();
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" style={{ transform: `rotate(${frame * 0.6}deg)`, filter: "drop-shadow(0 0 30px rgba(255,200,0,0.7))" }}>
+      {new Array(12).fill(0).map((_, i) => (
+        <rect key={i} x="48" y="4" width="4" height="14" rx="2" fill="#FFD21F" opacity="0.85" transform={`rotate(${i * 30} 50 50)`} />
+      ))}
+      <circle cx="50" cy="50" r="24" fill="#FFD21F" opacity="0.9" />
+    </svg>
+  );
+};
+
+const PeopleIcon: React.FC = () => (
+  <svg width="58" height="40" viewBox="0 0 58 40">
+    <circle cx="19" cy="11" r="8" fill="#111" />
+    <path d="M4 38 Q4 22 19 22 Q34 22 34 38 Z" fill="#111" />
+    <circle cx="39" cy="11" r="8" fill="#111" />
+    <path d="M24 38 Q24 22 39 22 Q54 22 54 38 Z" fill="#111" />
+  </svg>
+);
+
+/* 7 · ¿TE LO VAS A PERDER? ------------------------------------------- */
+const CalIcon: React.FC = () => (
+  <svg width="34" height="34" viewBox="0 0 34 34">
+    <rect x="3" y="6" width="28" height="25" rx="5" fill="none" stroke="#FFD21F" strokeWidth="3" />
+    <path d="M3 13 H31 M10 2 V9 M24 2 V9" stroke="#FFD21F" strokeWidth="3" strokeLinecap="round" />
+  </svg>
+);
+
+/* Logo discreto persistente (zona segura superior izquierda) ----------- */
+const BallIcon: React.FC<{ size?: number }> = ({ size = 38 }) => (
+  <svg width={size} height={size} viewBox="0 0 40 40">
+    <circle cx="20" cy="20" r="18" fill="#E8741C" stroke="#111" strokeWidth="2.5" />
+    <path d="M2 20 H38 M20 2 V38 M7 7 Q20 20 7 33 M33 7 Q20 20 33 33" stroke="#111" strokeWidth="2.5" fill="none" />
+  </svg>
+);
+
+/* 3 · PREMIOS: moto 110cc (1°) y TV Smart 32" (2°) ---------------------- */
 export const SceneBono: React.FC = () => {
   const frame = useCurrentFrame();
   const card = useSpring(0, { damping: 15 });
@@ -472,190 +576,3 @@ export const SceneListen: React.FC = () => {
 };
 
 /* 6b · EFECTIVO → TEMPORADA DE VERANO GRATIS PARA 2 ------------------- */
-export const SceneCash: React.FC = () => {
-  const frame = useCurrentFrame();
-  const top = useSpring(0, { damping: 15 });
-  const ef = at(17.54, "cash");
-  const temp = at(19.0, "cash");
-  const grat = at(19.75, "cash");
-  const two = at(20.32, "cash");
-  const shrink = useSpring(temp - 6, { damping: 16 });
-  const card = useSpring(temp, { damping: 14 });
-  const twoP = useSpring(two, { damping: 10 });
-  return (
-    <AbsoluteFill>
-      <div style={{ position: "absolute", left: 0, right: 0, top: interpolate(shrink, [0, 1], [430, 290]), transform: `scale(${interpolate(shrink, [0, 1], [1, 0.72])})`, transformOrigin: "50% 0%" }}>
-        <Center y={0} style={{ opacity: top, transform: `translateY(${(1 - top) * 30}px)` }}>
-          <Kicker text="Pagando en" delay={0} style={{ fontSize: 44 }} />
-        </Center>
-        <Center y={80}>
-          <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
-            <CoinIcon size={150} at={ef} />
-            <Title3D text="EFECTIVO" size={170} delay={ef - 2} depth={18} />
-          </div>
-        </Center>
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          left: 90,
-          top: 580,
-          width: 900,
-          height: 560,
-          opacity: card,
-          transform: `perspective(1600px) translateY(${(1 - card) * 160}px) rotateX(${(1 - card) * 22}deg)`,
-        }}
-      >
-        <Glass style={{ width: "100%", height: "100%" }} radius={50} padding={44}>
-          <div style={{ position: "absolute", right: -40, top: -40, opacity: 0.9 }}>
-            <SunIcon size={260} />
-          </div>
-          <div style={{ fontFamily: fonts.body, fontWeight: 800, fontSize: 34, letterSpacing: "0.22em", color: C.muted }}>ENTRÁS AL SORTEO POR</div>
-          <div style={{ fontFamily: fonts.title, fontWeight: 900, fontSize: 82, color: "#fff", lineHeight: 1, marginTop: 18 }}>
-            Temporada
-            <br />
-            de verano
-          </div>
-          <div style={{ marginTop: 10, display: "flex", opacity: frame >= grat ? 1 : 0 }}>
-            <Title3D text="GRATIS" size={150} delay={grat} depth={18} tilt={false} />
-          </div>
-          <div style={{ position: "absolute", right: 44, bottom: 44, transform: `scale(${twoP})`, transformOrigin: "100% 100%" }}>
-            <Pill size={36}>
-              <PeopleIcon /> 2 personas
-            </Pill>
-          </div>
-        </Glass>
-      </div>
-    </AbsoluteFill>
-  );
-};
-
-const CoinIcon: React.FC<{ size: number; at: number }> = ({ size, at: a }) => {
-  const frame = useCurrentFrame();
-  const p = useSpring(a, { damping: 9, mass: 0.6 });
-  const spin = Math.cos((frame - a) / 6);
-  return (
-    <div style={{ width: size, height: size, transform: `scale(${p}) scaleX(${frame >= a ? 0.35 + 0.65 * Math.abs(spin) : 1})` }}>
-      <svg width={size} height={size} viewBox="0 0 100 100" style={{ filter: "drop-shadow(0 10px 20px rgba(0,0,0,0.6)) drop-shadow(0 0 22px rgba(255,200,0,0.6))" }}>
-        <defs>
-          <radialGradient id="cg" cx="35%" cy="30%" r="80%">
-            <stop offset="0" stopColor="#FFF6C8" />
-            <stop offset="0.45" stopColor="#FFD21F" />
-            <stop offset="1" stopColor="#A87400" />
-          </radialGradient>
-        </defs>
-        <circle cx="50" cy="50" r="46" fill="url(#cg)" />
-        <circle cx="50" cy="50" r="37" fill="none" stroke="#9A6A00" strokeWidth="3" />
-        <text x="50" y="66" textAnchor="middle" fontFamily={fonts.title} fontWeight={900} fontSize="46" fill="#7A5200">
-          $
-        </text>
-      </svg>
-    </div>
-  );
-};
-
-const SunIcon: React.FC<{ size: number }> = ({ size }) => {
-  const frame = useCurrentFrame();
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" style={{ transform: `rotate(${frame * 0.6}deg)`, filter: "drop-shadow(0 0 30px rgba(255,200,0,0.7))" }}>
-      {new Array(12).fill(0).map((_, i) => (
-        <rect key={i} x="48" y="4" width="4" height="14" rx="2" fill="#FFD21F" opacity="0.85" transform={`rotate(${i * 30} 50 50)`} />
-      ))}
-      <circle cx="50" cy="50" r="24" fill="#FFD21F" opacity="0.9" />
-    </svg>
-  );
-};
-
-const PeopleIcon: React.FC = () => (
-  <svg width="58" height="40" viewBox="0 0 58 40">
-    <circle cx="19" cy="11" r="8" fill="#111" />
-    <path d="M4 38 Q4 22 19 22 Q34 22 34 38 Z" fill="#111" />
-    <circle cx="39" cy="11" r="8" fill="#111" />
-    <path d="M24 38 Q24 22 39 22 Q54 22 54 38 Z" fill="#111" />
-  </svg>
-);
-
-/* 7 · ¿TE LO VAS A PERDER? ------------------------------------------- */
-export const SceneQuestion: React.FC = () => {
-  const frame = useCurrentFrame();
-  const push = interpolate(frame, [0, 39], [1, 1.1]);
-  return (
-    <AbsoluteFill>
-      <LightRays y={760} opacity={0.5} />
-      <Glitch at={2} dur={5}>
-        <AbsoluteFill style={{ transform: `scale(${push})` }}>
-          <Center y={540}>
-            <Title3D text="¿TE LO VAS" size={168} delay={0} depth={16} gradient={SILVER_GRADIENT} extrudeColor="#4A4A4A" />
-          </Center>
-          <Center y={730}>
-            <Title3D text="A PERDER?" size={196} delay={6} depth={18} />
-          </Center>
-        </AbsoluteFill>
-      </Glitch>
-    </AbsoluteFill>
-  );
-};
-
-/* 8 · CIERRE ---------------------------------------------------------- */
-export const SceneEnd: React.FC = () => {
-  const frame = useCurrentFrame();
-  const sh = useSpring(0, { damping: 11, mass: 0.8 });
-  const info = useSpring(14, { damping: 15 });
-  const cta = useSpring(22, { damping: 12 });
-  const pulse = 1 + 0.035 * Math.sin(frame / 4.5) * (frame > 30 ? 1 : 0);
-  return (
-    <AbsoluteFill>
-      <LightRays y={440} opacity={0.9} />
-      <Confetti start={1} count={60} originY={440} seed="end" />
-      <Center y={260}>
-        <div style={{ transform: `scale(${sh}) translateY(${Math.sin(frame / 18) * 6}px)` }}>
-          <Shield size={230} glow={0.8} />
-        </div>
-      </Center>
-      <Center y={575}>
-        <Title3D text="GRAN SORTEO" size={128} delay={4} depth={16} />
-      </Center>
-      <Center y={690}>
-        <Title3D text="Solidario" size={118} serif delay={8} depth={6} tilt={false} />
-      </Center>
-      <div style={{ position: "absolute", left: 90, right: 90, top: 870, display: "flex", flexDirection: "column", alignItems: "center", gap: 22, opacity: info, transform: `translateY(${(1 - info) * 40}px)` }}>
-        <div style={{ display: "flex", gap: 20 }}>
-          <Pill dark size={32}>
-            <CalIcon /> Sorteo: diciembre
-          </Pill>
-          <Pill dark size={32}>
-            Lotería de Santa Fe
-          </Pill>
-        </div>
-      </div>
-      <Center y={1010} style={{ opacity: cta, transform: `scale(${(0.8 + cta * 0.2) * pulse})` }}>
-        <Pill size={50}>Comprá tu bono →</Pill>
-      </Center>
-      <Center y={1155} style={{ opacity: cta }}>
-        <div style={{ fontFamily: fonts.body, fontWeight: 600, fontSize: 28, color: C.muted, textAlign: "center", lineHeight: 1.4 }}>
-          Secretaría · Subcomisión de Básquet · Comisión Directiva
-        </div>
-      </Center>
-    </AbsoluteFill>
-  );
-};
-
-const CalIcon: React.FC = () => (
-  <svg width="34" height="34" viewBox="0 0 34 34">
-    <rect x="3" y="6" width="28" height="25" rx="5" fill="none" stroke="#FFD21F" strokeWidth="3" />
-    <path d="M3 13 H31 M10 2 V9 M24 2 V9" stroke="#FFD21F" strokeWidth="3" strokeLinecap="round" />
-  </svg>
-);
-
-/* Logo discreto persistente (zona segura superior izquierda) ----------- */
-export const CornerLogo: React.FC = () => {
-  const p = useSpring(0, { damping: 16 });
-  return (
-    <div style={{ position: "absolute", left: 64, top: 236, display: "flex", alignItems: "center", gap: 14, opacity: p * 0.95, transform: `translateX(${(1 - p) * -30}px)` }}>
-      <Shield size={56} glow={0.35} />
-      <div style={{ fontFamily: fonts.title, fontWeight: 900, fontSize: 26, color: "#fff", letterSpacing: "0.08em", lineHeight: 1.1 }}>
-        C.A.E.C.
-      </div>
-    </div>
-  );
-};

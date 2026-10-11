@@ -1,6 +1,8 @@
 import React from "react";
 import {
   AbsoluteFill,
+  Img,
+  staticFile,
   interpolate,
   random,
   spring,
@@ -126,16 +128,16 @@ export const Title3D: React.FC<{
 }) => {
   const frame = useCurrentFrame();
   const p = useSpring(delay, { damping: 13, mass: 0.9, stiffness: 120 });
-  const rx = tilt ? interpolate(p, [0, 1], [55, 8]) + Math.sin((frame - delay) / 22) * 2.5 : 0;
-  const ry = tilt ? Math.sin((frame - delay) / 30) * 6 : 0;
+  const rx = tilt ? interpolate(p, [0, 1], [50, 6]) + Math.sin((frame - delay) / 26) * 1.2 : 0;
+  const ry = tilt ? Math.sin((frame - delay) / 34) * 3 : 0;
   const sc = interpolate(p, [0, 1], [0.6, 1]);
   const op = interpolate(frame - delay, [0, 6], [0, 1], clamp);
-  const blur = interpolate(p, [0, 1], [14, 0]);
-  const shineX = interpolate((frame - delay - 8) % 75, [0, 30], [-60, 160], clamp);
+  const blur = interpolate(frame - delay, [0, 7], [10, 0], clamp);
+  const shineX = interpolate(frame - delay - 10, [0, 26], [-40, 140], clamp);
   const d = Math.round(depth * (size / 160));
   const shadows = new Array(Math.max(1, d))
     .fill(0)
-    .map((_, i) => `0 ${i + 1}px 0 ${shade(extrudeColor, i / d)}`)
+    .map((_, i) => `${((i + 1) * 0.35).toFixed(2)}px ${i + 1}px 0 ${shade(extrudeColor, i / d)}`)
     .join(",");
   const base: React.CSSProperties = {
     fontFamily: serif ? fonts.serif : fonts.title,
@@ -170,7 +172,7 @@ export const Title3D: React.FC<{
             position: "absolute",
             inset: 0,
             color: extrudeColor,
-            textShadow: `${shadows}, 0 ${d + 18}px 40px rgba(0,0,0,0.65), 0 0 60px rgba(255,190,0,0.25)`,
+            textShadow: `${shadows}, ${d * 0.35}px ${d + 10}px 22px rgba(0,0,0,0.55)`,
           }}
         >
           {text}
@@ -183,6 +185,7 @@ export const Title3D: React.FC<{
             WebkitBackgroundClip: "text",
             backgroundClip: "text",
             color: "transparent",
+            WebkitTextStroke: serif ? undefined : `${Math.max(1, size / 110)}px rgba(255,250,225,0.55)`,
           }}
         >
           {text}
@@ -440,7 +443,7 @@ export const SceneWrap: React.FC<{ children: React.ReactNode; dur: number; enter
   exitFrames = 6,
 }) => {
   const frame = useCurrentFrame();
-  const inP = interpolate(frame, [0, 9], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
+  const inP = interpolate(frame, [0, 6], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
   const outP = interpolate(frame, [dur - exitFrames, dur], [0, 1], { ...clamp, easing: Easing.in(Easing.cubic) });
   const scale = (enter === "zoom" ? interpolate(inP, [0, 1], [1.12, 1]) : 1) * interpolate(outP, [0, 1], [1, 0.92]);
   const ty = enter === "up" ? interpolate(inP, [0, 1], [120, 0]) : 0;
@@ -471,6 +474,129 @@ export const Kicker: React.FC<{ text: string; delay?: number; style?: React.CSSP
       }}
     >
       {text}
+    </div>
+  );
+};
+
+/* ---------- Logo oficial del club (sin deformar: solo ancho, alto automático) ---------- */
+export const Logo: React.FC<{ width: number; glow?: number; style?: React.CSSProperties }> = ({ width, glow = 0.4, style }) => (
+  <Img
+    src={staticFile("img/logo.png")}
+    style={{
+      width,
+      height: "auto",
+      display: "block",
+      filter: `drop-shadow(0 ${width * 0.06}px ${width * 0.12}px rgba(0,0,0,0.6)) drop-shadow(0 0 ${width * 0.18 * glow}px rgba(255,214,0,${glow}))`,
+      ...style,
+    }}
+  />
+);
+
+/* ---------- Moto en capas 3D: glow, podio, sombra, moto, brillos — con órbita de cámara ---------- */
+export const Moto3D: React.FC<{
+  width: number;
+  delay?: number;
+  orbit?: [number, number];
+  orbitFrames?: number;
+  fromX?: number;
+}> = ({ width, delay = 0, orbit = [-22, 10], orbitFrames = 90, fromX = 700 }) => {
+  const frame = useCurrentFrame();
+  const f = frame - delay;
+  const inP = useSpring(delay, { damping: 14, mass: 0.9, stiffness: 90 });
+  const ry = interpolate(f, [0, orbitFrames], orbit, { ...clamp, easing: Easing.out(Easing.quad) });
+  const rx = 8 + Math.sin(f / 30) * 1.5;
+  const h = width * (871 / 970);
+  const float = Math.sin(f / 18) * 8;
+  const sweep = interpolate(f, [8, 34], [-30, 130], clamp);
+  const layer = (z: number, extra: React.CSSProperties = {}): React.CSSProperties => ({
+    position: "absolute",
+    left: 0,
+    top: 0,
+    width,
+    height: h,
+    transform: `translateZ(${z}px)`,
+    ...extra,
+  });
+  return (
+    <div style={{ width, height: h, perspective: 1300, opacity: Math.min(1, inP * 1.6) }}>
+      <div
+        style={{
+          position: "relative",
+          width,
+          height: h,
+          transformStyle: "preserve-3d",
+          transform: `translateX(${(1 - inP) * fromX}px) rotateX(${rx}deg) rotateY(${ry + (1 - inP) * -35}deg) scale(${0.75 + inP * 0.25})`,
+        }}
+      >
+        {/* capa 1: halo dorado al fondo */}
+        <div style={layer(-320, { background: "radial-gradient(closest-side, rgba(255,205,0,0.55), rgba(255,205,0,0.12) 55%, rgba(255,205,0,0) 100%)", transform: "translateZ(-320px) scale(1.5)" })} />
+        {/* capa 2: aro del podio (en el piso) */}
+        <div
+          style={{
+            position: "absolute",
+            left: width * 0.05,
+            top: h * 0.95 - width * 0.45,
+            width: width * 0.9,
+            height: width * 0.9,
+            borderRadius: "50%",
+            transform: "rotateX(90deg)",
+            border: "6px solid rgba(255,210,31,0.85)",
+            boxShadow: "0 0 50px rgba(255,210,31,0.7), inset 0 0 60px rgba(255,210,31,0.45)",
+            background: "radial-gradient(closest-side, rgba(0,0,0,0.65), rgba(0,0,0,0) 100%)",
+          }}
+        />
+        {/* capa 3: moto, flotando */}
+        <div style={layer(40, { transform: `translateZ(40px) translateY(${float}px)` })}>
+          <Img
+            src={staticFile("img/moto_cut.png")}
+            style={{
+              width: "100%",
+              height: "100%",
+              filter: "drop-shadow(0 30px 30px rgba(0,0,0,0.7)) contrast(1.06) saturate(1.15)",
+              maskImage: "linear-gradient(90deg, black 90%, transparent 100%)",
+              WebkitMaskImage: "linear-gradient(90deg, black 90%, transparent 100%)",
+            }}
+          />
+          {/* barrido de luz sobre la moto */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: `linear-gradient(105deg, rgba(255,255,255,0) ${sweep - 14}%, rgba(255,245,200,0.6) ${sweep}%, rgba(255,255,255,0) ${sweep + 14}%)`,
+              mixBlendMode: "screen",
+              maskImage: `url(${staticFile("img/moto_cut.png")})`,
+              WebkitMaskImage: `url(${staticFile("img/moto_cut.png")})`,
+              maskSize: "100% 100%",
+              WebkitMaskSize: "100% 100%",
+            }}
+          />
+        </div>
+        {/* capa 4: brillos en primer plano */}
+        {new Array(10).fill(0).map((_, i) => {
+          const x = random(`m3x${i}`) * width;
+          const y = random(`m3y${i}`) * h * 0.9;
+          const z = 160 + random(`m3z${i}`) * 220;
+          const tw = Math.abs(Math.sin(f / 9 + i * 1.7));
+          const sz = 8 + random(`m3s${i}`) * 10;
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                left: x,
+                top: y + Math.sin(f / 20 + i) * 10,
+                width: sz,
+                height: sz,
+                transform: `translateZ(${z}px) rotate(45deg)`,
+                background: "#FFF3B0",
+                opacity: tw * 0.9,
+                boxShadow: "0 0 18px 4px rgba(255,214,0,0.8)",
+                borderRadius: 2,
+              }}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 };

@@ -71,7 +71,7 @@ const scene = (k: keyof typeof SCENES) => {
 };
 
 export const Reel: React.FC = () => {
-  const logo = { from: s2f(5.2), durationInFrames: s2f(SCENES.question[0]) - s2f(5.2) };
+  const logo = { from: s2f(6.05), durationInFrames: s2f(SCENES.question[0]) - s2f(6.05) };
   return (
     <AbsoluteFill style={{ background: "#000" }}>
       <Background />
